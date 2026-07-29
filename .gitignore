@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.log
+dist/
+build/
+*.spec
+.pytest_cache/
+.vscode/settings.json
