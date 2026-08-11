@@ -15,13 +15,17 @@ All UI components (menus, toolbars, docks, themes, etc.)
 are implemented in their own modules.
 """
 
+from pathlib import Path
+
 from PySide6.QtCore import Qt, QSettings, QSize
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
+    QFileDialog,
     QMainWindow,
     QMessageBox,
 )
 
+from app.core.pipeline import process_pdf
 from app.ui.menubar import MenuBar
 from app.ui.toolbar import ToolBar
 from app.ui.statusbar import StatusBar
@@ -132,14 +136,40 @@ class MainWindow(QMainWindow):
     # --------------------------------------------------
 
     def open_pdf(self):
-        """
-        Placeholder for PDF loading.
-        """
-
-        self.status.showMessage(
-            "Open PDF clicked...",
-            3000
+        """Open a PDF, process it, and display the extracted text."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open PDF",
+            str(Path.home()),
+            "PDF Files (*.pdf)",
         )
+
+        if not file_path:
+            return
+
+        self.status.showMessage(f"Loading {Path(file_path).name}...", 3000)
+
+        try:
+            result = process_pdf(file_path)
+        except Exception as exc:  # pragma: no cover - UI feedback path
+            QMessageBox.critical(self, "PDF Error", str(exc))
+            return
+
+        self.central.set_document_model(result["document"])
+        self.central.set_pdf_text(result["text"])
+        self.central.set_document_text(
+            "Processed document preview\n\n"
+            f"Title: {result['metadata']['title']}\n"
+            f"Author: {result['metadata']['author']}\n"
+            f"Pages: {result['metadata']['page_count']}\n"
+            f"Path: {result['metadata']['path']}\n"
+            f"Searchable: {result['metadata']['is_searchable']}"
+        )
+
+        self.status.set_status(f"Loaded {Path(file_path).name}")
+        self.status.set_page(1, result["metadata"]["page_count"])
+        self.status.set_ocr_status("Ready")
+        self.status.set_word_count(len(result["text"].split()))
 
     def toggle_theme(self):
         """

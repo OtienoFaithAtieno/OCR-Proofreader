@@ -1,24 +1,19 @@
-"""
-UI package.
+"""UI package for the Proofreader application."""
 
-This package contains all graphical user interface components
-for the Proofreader application.
-"""
-
-from .mainwindow import MainWindow
-from .menubar import MenuBar
-"""from .toolbar import ToolBar
-from .statusbar import StatusBar
 from .centralwidget import CentralWidget
 from .docmanager import DockManager
-from .theme import ThemeManager"""
+from .mainwindow import MainWindow
+from .menubar import MenuBar
+from .statusbar import StatusBar
+from .theme import ThemeManager
+from .toolbar import ToolBar
 
 __all__ = [
-    "MainWindow",
-    "MenuBar",
-    "ToolBar",
-    "StatusBar",
     "CentralWidget",
     "DockManager",
+    "MainWindow",
+    "MenuBar",
+    "StatusBar",
     "ThemeManager",
+    "ToolBar",
 ]
