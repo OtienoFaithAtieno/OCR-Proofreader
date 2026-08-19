@@ -69,7 +69,7 @@ class PdfViewerWidget(QFrame):
         self.viewer.setAlignment(Qt.AlignCenter)
         self.viewer.setMinimumHeight(320)
         self.viewer.setStyleSheet(
-            "background-color: #f5f5f5; border: 1px solid #d0d0d0;"
+            "background-color: #ffffff; border: 1px solid #d0d0d0; color: #000000;"
         )
 
         self.page_selector = QComboBox()
@@ -83,6 +83,7 @@ class PdfViewerWidget(QFrame):
 
         self._document = None
         self._document_path = None
+        self._pixmap_cache: Dict[int, QPixmap] = {}
 
     def set_document(self, document_model):
         self._document = document_model
@@ -105,21 +106,41 @@ class PdfViewerWidget(QFrame):
         if not self._document_path:
             return
 
+        # Use cached pixmap when available
+        if page.number in self._pixmap_cache:
+            self.viewer.setPixmap(self._pixmap_cache[page.number])
+            return
+
         try:
             document = fitz.open(self._document_path)
             page_obj = document.load_page(page.number - 1)
-            pix = page_obj.get_pixmap(matrix=fitz.Matrix(1.6, 1.6), alpha=False)
+            pix = page_obj.get_pixmap(matrix=fitz.Matrix(1.6, 1.6), alpha=True)
+
+            # Choose appropriate QImage format depending on presence of alpha
+            if pix.alpha:  # RGBA
+                fmt = QImage.Format_RGBA8888
+            else:
+                fmt = QImage.Format_RGB888
+
             image = QImage(
                 pix.samples,
                 pix.width,
                 pix.height,
                 pix.stride,
-                QImage.Format_RGB888,
+                fmt,
             )
-            self.viewer.setPixmap(QPixmap.fromImage(image))
+
+            pixmap = QPixmap.fromImage(image)
+
+            # cache and display
+            self._pixmap_cache[page.number] = pixmap
+            self.viewer.setPixmap(pixmap)
+
             document.close()
         except Exception:
-            self.viewer.setText("Unable to render this page")
+            # Fallback to text if rendering fails
+            text = getattr(page, "text", None) or "Unable to render this page"
+            self.viewer.setText(text)
 
 
 # ==========================================================
@@ -152,6 +173,7 @@ class DocumentPreviewWidget(QFrame):
 
         self.editor = QTextEdit()
         self.editor.setLineWrapMode(QTextEdit.NoWrap)
+        self.editor.setStyleSheet("background: #ffffff; color: #000000;")
 
         self.editor.setPlaceholderText(
             "Processed document preview will appear here..."
@@ -208,6 +230,7 @@ class CentralWidget(QWidget):
         super().__init__(parent)
 
         self._build_ui()
+        self._selectors_connected = False
 
     # ------------------------------------------------------
 
@@ -265,6 +288,21 @@ class CentralWidget(QWidget):
         """Render the document model into both panels."""
         self.pdf_panel.set_document(document_model)
         self.document_panel.set_document(document_model)
+        # Connect selectors once to keep them synchronized
+        if not getattr(self, "_selectors_connected", False):
+            def on_pdf_index(i):
+                self.document_panel.page_selector.blockSignals(True)
+                self.document_panel.page_selector.setCurrentIndex(i)
+                self.document_panel.page_selector.blockSignals(False)
+
+            def on_doc_index(i):
+                self.pdf_panel.page_selector.blockSignals(True)
+                self.pdf_panel.page_selector.setCurrentIndex(i)
+                self.pdf_panel.page_selector.blockSignals(False)
+
+            self.pdf_panel.page_selector.currentIndexChanged.connect(on_pdf_index)
+            self.document_panel.page_selector.currentIndexChanged.connect(on_doc_index)
+            self._selectors_connected = True
 
     def clear(self):
         """
