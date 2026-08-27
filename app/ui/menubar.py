@@ -97,14 +97,6 @@ class MenuBar(QMenuBar):
         self.action_fullscreen = QAction("Full Screen", self)
         self.action_fullscreen.setShortcut("F11")
 
-        #
-        # OCR
-        #
-
-        self.action_run_ocr = QAction("Run OCR", self)
-
-        self.action_ocr_settings = QAction("OCR Settings", self)
-
         self.action_detect_tables = QAction("Detect Tables", self)
 
         self.action_detect_images = QAction("Detect Images", self)
@@ -244,19 +236,6 @@ class MenuBar(QMenuBar):
 
         view_menu.addAction(self.action_toggle_theme)
         view_menu.addAction(self.action_fullscreen)
-
-        #
-        # OCR
-        #
-
-        ocr_menu = self.addMenu("&OCR")
-
-        ocr_menu.addAction(self.action_run_ocr)
-        ocr_menu.addSeparator()
-        ocr_menu.addAction(self.action_detect_tables)
-        ocr_menu.addAction(self.action_detect_images)
-        ocr_menu.addSeparator()
-        ocr_menu.addAction(self.action_ocr_settings)
 
         #
         # Proofreading

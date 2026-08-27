@@ -1,63 +1,49 @@
-"""Simple OCR fallback using PyMuPDF text extraction."""
+"""Optional OCR support for scanned PDF pages."""
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
-from typing import Any
 
 import fitz
 
-from app.model.document import Document, DocumentMetadata, Page as DocumentPage
-from app.model.paragraph import Paragraph
+
+class OCRUnavailableError(RuntimeError):
+    """Raised when Python OCR support or Tesseract is unavailable."""
 
 
-def run_ocr(document_path: str | Path) -> dict[str, Any]:
-    """Extract text from a PDF using PyMuPDF as a lightweight OCR fallback."""
-    path = Path(document_path)
-    document = fitz.open(path)
+def _configure_tesseract(pytesseract) -> None:
+    """Configure Tesseract from PATH or common Windows install locations."""
+    candidates = [
+        os.environ.get("TESSERACT_CMD", ""),
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).is_file():
+            pytesseract.pytesseract.tesseract_cmd = candidate
+            return
 
     try:
-        pages: list[DocumentPage] = []
-        for page_number in range(document.page_count):
-            page = document.load_page(page_number)
-            text = page.get_text("text").strip()
-            paragraphs: list[Paragraph] = []
-            if text:
-                for line in text.splitlines():
-                    stripped = line.strip()
-                    if stripped:
-                        paragraphs.append(
-                            Paragraph(
-                                id=len(paragraphs) + 1,
-                                text=stripped,
-                                bbox=(0.0, 0.0, 0.0, 0.0),
-                                page=page_number + 1,
-                                confidence=0.9,
-                            )
-                        )
-            doc_page = DocumentPage(
-                page_number=page_number + 1,
-                width=float(page.rect.width),
-                height=float(page.rect.height),
-                ocr_complete=True,
-                confidence=0.9 if text else 0.0,
-                metadata={"source": "fitz"},
-            )
-            doc_page.paragraphs = paragraphs
-            pages.append(doc_page)
+        pytesseract.get_tesseract_version()
+    except Exception as exc:
+        raise OCRUnavailableError(
+            "OCR requires Tesseract OCR. Install it and add it to PATH, "
+            "or set the TESSERACT_CMD environment variable."
+        ) from exc
 
-        metadata = DocumentMetadata(
-            title=path.stem,
-            author="",
-            language="en",
-        )
 
-        document_model = Document(
-            filename=path.name,
-            source_path=str(path),
-            metadata=metadata,
-            pages=pages,
-        )
-        return {"document": document_model, "text": "\n\n".join(page.text for page in pages)}
-    finally:
-        document.close()
+def extract_page_text(page: fitz.Page) -> str:
+    """Extract text from a scanned PDF page with Tesseract OCR."""
+    try:
+        import pytesseract
+        from PIL import Image
+    except ImportError as exc:
+        raise OCRUnavailableError(
+            "OCR requires pytesseract and Pillow. Install the project requirements."
+        ) from exc
+
+    _configure_tesseract(pytesseract)
+    pixmap = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
+    image = Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
+    return pytesseract.image_to_string(image).strip()

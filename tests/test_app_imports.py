@@ -13,6 +13,7 @@ def test_main_window_can_be_created():
 
     assert isinstance(window, QMainWindow)
     assert window.windowTitle() == "Proofreader"
+    assert window.central.document_panel.editor.isReadOnly() is False
 
     window.close()
     app.quit()

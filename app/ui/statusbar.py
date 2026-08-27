@@ -66,12 +66,6 @@ class StatusBar(QStatusBar):
         self.zoom_label = QLabel("Zoom: 100%")
 
         #
-        # OCR Status
-        #
-
-        self.ocr_label = QLabel("OCR: Idle")
-
-        #
         # Document statistics
         #
 
@@ -105,10 +99,6 @@ class StatusBar(QStatusBar):
 
         self.addPermanentWidget(self._separator())
 
-        self.addPermanentWidget(self.ocr_label)
-
-        self.addPermanentWidget(self._separator())
-
         self.addPermanentWidget(self.words_label)
 
         self.addPermanentWidget(self._separator())
@@ -139,12 +129,6 @@ class StatusBar(QStatusBar):
 
         self.zoom_label.setText(
             f"Zoom: {zoom}%"
-        )
-
-    def set_ocr_status(self, text: str):
-
-        self.ocr_label.setText(
-            f"OCR: {text}"
         )
 
     def set_word_count(self, words: int):

@@ -21,11 +21,15 @@ from PySide6.QtCore import Qt, QSettings, QSize
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QFileDialog,
+    QInputDialog,
     QMainWindow,
     QMessageBox,
 )
 
-from app.core.pipeline import process_pdf
+from app.cleaner.cleaner import clean_document
+from app.cleaner.rules.fonts import normalize_fonts
+from app.core.pipeline import process_docx, process_pdf
+from app.exporter.exporter import export_document_to_docx
 from app.ui.menubar import MenuBar
 from app.ui.toolbar import ToolBar
 from app.ui.statusbar import StatusBar
@@ -110,10 +114,22 @@ class MainWindow(QMainWindow):
         self.menu.action_open_pdf.triggered.connect(
             self.open_pdf
         )
+        self.menu.action_open_docx.triggered.connect(self.open_docx)
 
         self.toolbar.action_open.triggered.connect(
             self.open_pdf
         )
+
+        self.menu.action_export_docx.triggered.connect(
+            self.export_docx
+        )
+        self.menu.action_new.triggered.connect(self.new_document)
+        self.menu.action_save.triggered.connect(self.export_docx)
+        self.menu.action_save_as.triggered.connect(self.export_docx)
+        self.menu.action_export.triggered.connect(self.export_docx)
+        self.menu.action_export_pdf.triggered.connect(self.export_not_available)
+        self.menu.action_export_html.triggered.connect(self.export_not_available)
+        self.menu.action_export_markdown.triggered.connect(self.export_not_available)
 
         #
         # VIEW
@@ -122,6 +138,24 @@ class MainWindow(QMainWindow):
         self.menu.action_toggle_theme.triggered.connect(
             self.toggle_theme
         )
+        self.menu.action_fullscreen.triggered.connect(self.toggle_fullscreen)
+        self.menu.action_zoom_in.triggered.connect(self.zoom_in)
+        self.menu.action_zoom_out.triggered.connect(self.zoom_out)
+        self.menu.action_reset_zoom.triggered.connect(self.reset_zoom)
+
+        self.menu.action_undo.triggered.connect(self.central.document_panel.editor.undo)
+        self.menu.action_redo.triggered.connect(self.central.document_panel.editor.redo)
+        self.menu.action_cut.triggered.connect(self.central.document_panel.editor.cut)
+        self.menu.action_copy.triggered.connect(self.central.document_panel.editor.copy)
+        self.menu.action_paste.triggered.connect(self.central.document_panel.editor.paste)
+        self.menu.action_find.triggered.connect(self.find_text)
+
+        self.menu.action_clean_document.triggered.connect(self.clean_current_document)
+        self.menu.action_normalize_fonts.triggered.connect(self.normalize_current_fonts)
+        self.menu.action_detect_tables.triggered.connect(self.show_tool_message)
+        self.menu.action_detect_images.triggered.connect(self.show_tool_message)
+        self.menu.action_preferences.triggered.connect(self.show_preferences)
+        self.menu.action_documentation.triggered.connect(self.show_documentation)
 
         #
         # HELP
@@ -156,19 +190,32 @@ class MainWindow(QMainWindow):
             return
 
         self.central.set_document_model(result["document"])
-        self.central.set_pdf_text(result["text"])
-        self.central.set_document_text(
-            "Processed document preview\n\n"
-            f"Title: {result['metadata']['title']}\n"
-            f"Author: {result['metadata']['author']}\n"
-            f"Pages: {result['metadata']['page_count']}\n"
-            f"Path: {result['metadata']['path']}\n"
-            f"Searchable: {result['metadata']['is_searchable']}"
-        )
 
         self.status.set_status(f"Loaded {Path(file_path).name}")
         self.status.set_page(1, result["metadata"]["page_count"])
-        self.status.set_ocr_status("Ready")
+        self.status.set_word_count(len(result["text"].split()))
+
+    def open_docx(self):
+        """Open an unformatted DOCX as editable document content."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open Word Document",
+            str(Path.home()),
+            "Word Documents (*.docx)",
+        )
+        if not file_path:
+            return
+
+        try:
+            result = process_docx(file_path)
+        except Exception as exc:  # pragma: no cover - UI feedback path
+            QMessageBox.critical(self, "DOCX Error", str(exc))
+            return
+
+        self.central.set_document_model(result["document"])
+        self.central.pdf_panel.set_source_text(result["text"])
+        self.status.set_status(f"Opened {Path(file_path).name}")
+        self.status.set_page(1, result["metadata"]["page_count"])
         self.status.set_word_count(len(result["text"].split()))
 
     def toggle_theme(self):
@@ -177,6 +224,96 @@ class MainWindow(QMainWindow):
         """
 
         self.theme_manager.toggle(self)
+
+    def new_document(self):
+        """Clear the current document and return to an empty workspace."""
+        self.central.clear()
+        self.central.pdf_panel._document = None
+        self.central.document_panel._document = None
+        self.status.set_status("New document")
+
+    def toggle_fullscreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
+
+    def zoom_in(self):
+        self.central.document_panel.editor.zoomIn(1)
+
+    def zoom_out(self):
+        self.central.document_panel.editor.zoomOut(1)
+
+    def reset_zoom(self):
+        self.central.document_panel.editor.setFontPointSize(11)
+
+    def find_text(self):
+        text, accepted = QInputDialog.getText(self, "Find", "Text:")
+        if accepted and text:
+            self.central.document_panel.editor.find(text)
+
+    def clean_current_document(self):
+        if self.central.document_model:
+            clean_document(self.central.document_model)
+            self.central.document_panel._show_selected_page(
+                self.central.document_panel._current_page_index
+            )
+            self.status.set_status("Formatting cleaned")
+
+    def normalize_current_fonts(self):
+        if self.central.document_model:
+            normalize_fonts(self.central.document_model)
+            self.status.set_status("Fonts normalized")
+
+    def show_tool_message(self):
+        self.status.set_status("This tool is not implemented yet")
+
+    def show_preferences(self):
+        QMessageBox.information(self, "Preferences", "Preferences are not implemented yet.")
+
+    def export_not_available(self):
+        """Explain which export format is currently supported."""
+        self.status.set_status("DOCX is the currently supported export format")
+
+    def open_docx_not_available(self):
+        """Explain that PDF import is currently the input workflow."""
+        self.status.set_status("Open a PDF to create an editable DOCX document")
+
+    def show_documentation(self):
+        QMessageBox.information(
+            self,
+            "Documentation",
+            "Open README.md in the project folder for documentation.",
+        )
+
+    def export_docx(self):
+        """Export the opened PDF as a visually matched DOCX file."""
+        document_model = self.central.pdf_panel._document
+        if document_model is None:
+            QMessageBox.information(
+                self,
+                "Nothing to Export",
+                "Open a PDF before exporting a DOCX file.",
+            )
+            return
+
+        default_name = Path(document_model.filename).stem + ".docx"
+        output_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export as DOCX",
+            str(Path.home() / default_name),
+            "Word Documents (*.docx)",
+        )
+        if not output_path:
+            return
+
+        try:
+            export_document_to_docx(document_model, output_path)
+        except Exception as exc:  # pragma: no cover - UI feedback path
+            QMessageBox.critical(self, "Export Error", str(exc))
+            return
+
+        self.status.set_status(f"Exported {Path(output_path).name}")
 
     def show_about(self):
         """

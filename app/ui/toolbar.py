@@ -52,14 +52,6 @@ class ToolBar(QToolBar):
         self.addSeparator()
 
         #
-        # OCR
-        #
-
-        self.addAction(menu.action_run_ocr)
-
-        self.addSeparator()
-
-        #
         # Proofreading
         #
 
