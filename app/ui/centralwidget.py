@@ -257,8 +257,13 @@ class DocumentPreviewWidget(QFrame):
 
         self.editor = QTextEdit()
         self.editor.setAcceptRichText(False)
+        output_font = QFont("Times New Roman", 12)
+        self.editor.setFont(output_font)
+        self.editor.document().setDefaultFont(output_font)
         self.editor.setStyleSheet(
-            "background-color: #ffffff; color: #000000; border: 1px solid #d0d0d0;"
+            "background-color: #ffffff; color: #000000; "
+            "font-family: 'Times New Roman'; font-size: 12pt; "
+            "border: 1px solid #d0d0d0;"
         )
         self.editor.setPlaceholderText("The editable output will appear here.")
         self.editor.textChanged.connect(self._save_current_page_text)

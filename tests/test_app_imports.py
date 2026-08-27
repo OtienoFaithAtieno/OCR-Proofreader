@@ -14,6 +14,8 @@ def test_main_window_can_be_created():
     assert isinstance(window, QMainWindow)
     assert window.windowTitle() == "Proofreader"
     assert window.central.document_panel.editor.isReadOnly() is False
+    assert window.central.document_panel.editor.font().family() == "Times New Roman"
+    assert window.central.document_panel.editor.font().pointSize() == 12
 
     window.close()
     app.quit()

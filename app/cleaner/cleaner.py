@@ -6,12 +6,14 @@ from app.cleaner.rules.fonts import normalize_fonts
 from app.cleaner.rules.headings import normalize_headings
 from app.cleaner.rules.page_breaks import normalize_page_breaks
 from app.cleaner.rules.paragraphs import normalize_paragraphs
+from app.cleaner.rules.validations import normalize_output_rules
 
 
 DocumentRule = Callable[[object], object]
 
 # Add the remaining rules here in their required execution order.
 DEFAULT_RULES: tuple[DocumentRule, ...] = (
+    normalize_output_rules,
     normalize_paragraphs,
     normalize_headings,
     normalize_fonts,
