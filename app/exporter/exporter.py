@@ -23,6 +23,8 @@ def export_document_to_docx(document_model, output_path: str | Path) -> Path:
     word_document.core_properties.subject = ""
     word_document.core_properties.keywords = ""
     _set_document_background(word_document, "FFFFFF")
+    word_document.styles["Normal"].font.name = "Times New Roman"
+    word_document.styles["Normal"].font.size = Pt(12)
 
     for page_index, model_page in enumerate(document_model.pages):
         if page_index:
@@ -37,7 +39,7 @@ def export_document_to_docx(document_model, output_path: str | Path) -> Path:
         section.right_margin = Inches(0.75)
 
         for block in model_page.blocks:
-            paragraph = word_document.add_paragraph()
+            paragraph = word_document.add_paragraph(style="Normal")
             paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
             paragraph.paragraph_format.space_after = Pt(6)
             paragraph.paragraph_format.line_spacing = 1.0

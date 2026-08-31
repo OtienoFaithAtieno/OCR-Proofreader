@@ -10,6 +10,8 @@ DEFAULT_FONT_NAME = "Times New Roman"
 DEFAULT_FONT_SIZE = 12.0
 DEFAULT_TEXT_COLOR = "000000"
 DEFAULT_BACKGROUND_COLOR = "FFFFFF"
+DEFAULT_PARAGRAPH_STYLE = "Normal"
+FIELD_PROTECTION_SHORTCUT = "Ctrl+Shift+F9"
 
 
 def normalize_output_rules(document):
@@ -20,9 +22,13 @@ def normalize_output_rules(document):
     - Replace tab characters with normal spaces.
     - Replace form-feed page breaks with two blank text entries.
     - Collapse repeated spaces to one space.
+    - Replace dot-space-dot sequences with double dots.
     - Replace em dashes with two hyphens.
+    - Keep the document in a typical Word Normal paragraph style.
     """
     document.properties["background_color"] = DEFAULT_BACKGROUND_COLOR
+    document.properties["style"] = DEFAULT_PARAGRAPH_STYLE
+    document.properties["page_number_protection"] = FIELD_PROTECTION_SHORTCUT
 
     for page in document.pages:
         for block in page.blocks:
@@ -33,6 +39,7 @@ def normalize_output_rules(document):
                     "font_size": str(DEFAULT_FONT_SIZE),
                     "text_color": DEFAULT_TEXT_COLOR,
                     "background_color": DEFAULT_BACKGROUND_COLOR,
+                    "style": DEFAULT_PARAGRAPH_STYLE,
                 }
             )
 
@@ -44,6 +51,7 @@ def _normalize_text(text: str) -> str:
     text = text.replace("\t", " ")
     text = text.replace("\u2014", "--")
     text = text.replace("\f", "\n\n")
+    text = re.sub(r"\.\s+\.", "..", text)
     text = re.sub(r" {2,}", " ", text)
     return text
 
@@ -55,6 +63,7 @@ def validate_output_document(document) -> bool:
         and block.style.get("font_size") == str(DEFAULT_FONT_SIZE)
         and block.style.get("text_color") == DEFAULT_TEXT_COLOR
         and block.style.get("background_color") == DEFAULT_BACKGROUND_COLOR
+        and block.style.get("style") == DEFAULT_PARAGRAPH_STYLE
         for page in document.pages
         for block in page.blocks
     )

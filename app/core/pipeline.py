@@ -114,8 +114,9 @@ def process_docx(document_path: str | Path) -> dict:
         metadata=DocumentMetadata(title="", author="", language="en"),
         pages=[page],
     )
+    document_model = clean_document(document_model)
     return {
         "document": document_model,
         "text": document_model.full_text,
-        "metadata": {"page_count": 1, "path": str(path)},
+        "metadata": {"page_count": document_model.page_count, "path": str(path)},
     }

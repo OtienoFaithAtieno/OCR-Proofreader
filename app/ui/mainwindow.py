@@ -287,13 +287,15 @@ class MainWindow(QMainWindow):
         )
 
     def export_docx(self):
-        """Export the opened PDF as a visually matched DOCX file."""
-        document_model = self.central.pdf_panel._document
+        """Export the active document using the same flow for PDF or DOCX sources."""
+        document_model = self.central.document_model
+        if document_model is None:
+            document_model = self.central.pdf_panel._document
         if document_model is None:
             QMessageBox.information(
                 self,
                 "Nothing to Export",
-                "Open a PDF before exporting a DOCX file.",
+                "Open a PDF or Word document before exporting a DOCX file.",
             )
             return
 
